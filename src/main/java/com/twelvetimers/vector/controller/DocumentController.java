@@ -5,9 +5,12 @@ import com.twelvetimers.vector.dto.DocumentListResponse;
 import com.twelvetimers.vector.dto.SubmitDocumentRequest;
 import com.twelvetimers.vector.dto.SubmitDocumentResponse;
 import com.twelvetimers.vector.service.DocumentService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/documents")
 @RequiredArgsConstructor
+@Validated
 public class DocumentController {
 
     private final DocumentService documentService;
@@ -29,14 +33,15 @@ public class DocumentController {
     /** 文档入库：202 Accepted —— 向量化在后台异步执行，返回任务 ID */
     @PostMapping
     public ResponseEntity<SubmitDocumentResponse> submit(
-            @RequestBody SubmitDocumentRequest request) {
+            @Valid @RequestBody SubmitDocumentRequest request) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
                 .body(documentService.submit(request));
     }
 
     /** 标记文档失效 */
     @PostMapping("/{docId}/invalidate")
-    public ResponseEntity<Void> invalidate(@PathVariable String docId) {
+    public ResponseEntity<Void> invalidate(
+            @PathVariable @NotBlank(message = "docId 不能为空") String docId) {
         documentService.invalidate(docId);
         return ResponseEntity.noContent().build();
     }
@@ -52,7 +57,8 @@ public class DocumentController {
 
     /** 文档详情：元信息 + 关联向量化任务 */
     @GetMapping("/{docId}")
-    public DocumentDetailResponse detail(@PathVariable String docId) {
+    public DocumentDetailResponse detail(
+            @PathVariable @NotBlank(message = "docId 不能为空") String docId) {
         return documentService.detail(docId);
     }
 }

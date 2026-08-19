@@ -3,6 +3,7 @@ package com.twelvetimers.vector.controller;
 import com.twelvetimers.vector.dto.SearchRequest;
 import com.twelvetimers.vector.dto.SearchResponse;
 import com.twelvetimers.vector.service.SearchService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +21,7 @@ public class SearchController {
     private final SearchService searchService;
 
     @PostMapping
-    public SearchResponse search(@RequestBody SearchRequest request) {
+    public SearchResponse search(@Valid @RequestBody SearchRequest request) {
         return searchService.search(request);
     }
 }
