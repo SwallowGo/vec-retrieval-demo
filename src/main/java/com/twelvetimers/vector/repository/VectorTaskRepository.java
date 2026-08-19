@@ -16,13 +16,15 @@ public interface VectorTaskRepository extends JpaRepository<VectorTaskEntity, Lo
 
     Optional<VectorTaskEntity> findByTaskId(String taskId);
 
+    Optional<VectorTaskEntity> findByDocId(String docId);
+
     List<VectorTaskEntity> findByStatusIn(Collection<TaskStatus> statuses);
 
     /**
      * 状态机条件更新（乐观锁）：仅当任务仍处于 expected 状态时才流转到 to 状态。
      * 影响行数为 0 说明已被其他线程抢占 —— 防止任务被重复消费。
      */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(clearAutomatically = true)
     @Query("update VectorTaskEntity t set t.status = :to, t.startTime = :startTime "
             + "where t.id = :id and t.status = :expected")
     int claimIfStatus(@Param("id") Long id,
@@ -31,7 +33,15 @@ public interface VectorTaskRepository extends JpaRepository<VectorTaskEntity, Lo
                       @Param("startTime") LocalDateTime startTime);
 
     /** 批量重置状态（启动恢复：遗留的 QUEUED/PROCESSING 统一重置为 QUEUED 重放） */
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Modifying(clearAutomatically = true)
     @Query("update VectorTaskEntity t set t.status = :to where t.status in :from")
     int updateStatusIn(@Param("from") Collection<TaskStatus> from, @Param("to") TaskStatus to);
+
+    /** 任务置为成功（与文档条件更新同事务内均为批量更新，避开脏检查与 clear 的冲突） */
+    @Modifying(clearAutomatically = true)
+    @Query("update VectorTaskEntity t set t.status = :to, t.finishTime = :time "
+            + "where t.id = :id")
+    int updateToSuccess(@Param("id") Long id,
+                        @Param("to") TaskStatus to,
+                        @Param("time") LocalDateTime time);
 }

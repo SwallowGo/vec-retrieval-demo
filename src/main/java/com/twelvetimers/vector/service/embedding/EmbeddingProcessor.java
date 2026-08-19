@@ -78,25 +78,29 @@ public class EmbeddingProcessor {
         }
     }
 
-    /** 结果落库（事务）：文档写向量并置 READY，任务置 SUCCESS */
+    /**
+     * 结果落库（事务）：任务置 SUCCESS；文档条件更新 PENDING→READY 并写入向量。
+     * 两者均为 @Modifying 批量更新 —— 批量更新会清空持久化上下文，若混用
+     * 实体脏检查更新，其未 flush 的改动会被丢弃（任务将永远停在 PROCESSING）。
+     * 若处理期间文档被标记失效（条件更新影响 0 行），任务仍记为成功但不再通知索引。
+     */
     private void complete(Long taskId, Long documentId, String docId, String channel,
                           float[] vector) {
-        transactionTemplate.executeWithoutResult(status -> {
-            VectorTaskEntity task = taskRepository.findById(taskId).orElseThrow();
-            task.setStatus(TaskStatus.SUCCESS);
-            task.setFinishTime(LocalDateTime.now());
-
-            DocumentEntity document = documentRepository.findById(documentId).orElseThrow();
-            document.setStatus(DocumentStatus.READY);
-            document.setVector(VectorCodec.encode(vector));
-            document.setCompleteTime(LocalDateTime.now());
-        });
+        boolean ready = Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+            LocalDateTime now = LocalDateTime.now();
+            taskRepository.updateToSuccess(taskId, TaskStatus.SUCCESS, now);
+            return documentRepository.markReadyIfStatus(documentId,
+                    DocumentStatus.PENDING, DocumentStatus.READY,
+                    VectorCodec.encode(vector), now) > 0;
+        }));
         // 事务已提交后通知（索引更新晚于落库：索引里有的数据 DB 里一定有）
-        for (EmbeddingCompletionListener listener : completionListeners) {
-            try {
-                listener.onEmbedded(docId, channel, vector);
-            } catch (Exception e) {
-                log.error("完成回调执行失败", e);
+        if (ready) {
+            for (EmbeddingCompletionListener listener : completionListeners) {
+                try {
+                    listener.onEmbedded(docId, channel, vector);
+                } catch (Exception e) {
+                    log.error("完成回调执行失败", e);
+                }
             }
         }
     }
