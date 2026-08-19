@@ -67,7 +67,7 @@ class ValidationApiTest {
 
         mockMvc.perform(post("/api/v1/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("not-a-json"))
+                        .content("\"not-a-json\""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_PARAM"));
     }
