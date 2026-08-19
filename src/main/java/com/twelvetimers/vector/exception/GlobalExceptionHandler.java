@@ -6,10 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -67,6 +70,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(ErrorCode.DOC_DUPLICATE.getHttpStatus())
                 .body(ErrorResponse.of(ErrorCode.DOC_DUPLICATE.name(),
                         "数据冲突：文档可能已存在"));
+    }
+
+    /**
+     * 无匹配路由/静态资源（Spring Boot 3.2+ 对未匹配路径抛此异常）。
+     * 必须先于兜底 Exception 处理器：否则被误判为 500。
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException e) {
+        return ResponseEntity.status(ErrorCode.PATH_NOT_FOUND.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.PATH_NOT_FOUND.name(),
+                        ErrorCode.PATH_NOT_FOUND.getDefaultMessage() + ": " + e.getResourcePath()));
+    }
+
+    /** 请求方法不允许（如对 POST 接口发起 GET） */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException e) {
+        return ResponseEntity.status(ErrorCode.METHOD_NOT_ALLOWED.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.METHOD_NOT_ALLOWED.name(), e.getMessage()));
+    }
+
+    /** 媒体类型不支持（如非 JSON 请求体） */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMediaTypeNotSupported(
+            HttpMediaTypeNotSupportedException e) {
+        return ResponseEntity.status(ErrorCode.MEDIA_TYPE_NOT_SUPPORTED.getHttpStatus())
+                .body(ErrorResponse.of(ErrorCode.MEDIA_TYPE_NOT_SUPPORTED.name(), e.getMessage()));
     }
 
     /** 兜底：未预期异常一律 500，不向客户端泄漏内部细节 */

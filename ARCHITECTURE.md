@@ -115,6 +115,7 @@ ReadyIndexService:
 
 | 方法 | 路径 | 功能 | 请求 → 响应 |
 |---|---|---|---|
+| GET | `/` | 服务信息与接口清单 | → 服务名 + endpoints |
 | POST | `/api/v1/documents` | 提交文档 | `{docId, text, channel?}` → `{taskId}` |
 | GET | `/api/v1/tasks/{taskId}` | 任务状态 | → `{taskId, docId, status, errorMsg, 各时间戳, document?}` |
 | POST | `/api/v1/search` | 向量检索（同步） | `{text, topK, channel?}` → `{items:[{docId, channel, score}]}` |
@@ -235,3 +236,4 @@ com.twelvetimers.vector
 | 2026-08-19 | 初版创建；确认检索走内存索引方案；重复提交暂定直接拒绝（默认方案） | 与 AI 沟通梳理架构 |
 | 2026-08-19 | 技术选型表补充 ORM 选 JPA 的完整理由 | 用户追问 JPA vs MyBatis 决策依据 |
 | 2026-08-19 | 实施计划细化：异常基础设施（BusinessException/ErrorCode/基础处理器）提前到 commit 4，commit 5 专注校验注解与处理完善；并发安全清单补充"向量化期间被失效"与"批量更新与脏检查混用"两条 | 实施过程中的实际调整 |
+| 2026-08-19 | 全局异常处理补充框架异常精确映射（无资源 404 / 方法不允许 405 / 媒体类型 415），避免兜底处理器把 Spring MVC 框架异常误判为 500；新增 GET / 根路径服务信息接口 | 用户实测发现访问根路径返回 500 的缺陷 |
