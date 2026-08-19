@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12Timers · 向量检索服务</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<style>
+  :root {
+    --bg: #f4f5f9;
+    --card: #ffffff;
+    --border: #e4e7f0;
+    --text: #1f2430;
+    --muted: #6b7280;
+    --accent: #4f46e5;
+    --accent-soft: #eef2ff;
+    --green: #16a34a;
+    --green-soft: #ecfdf5;
+    --amber: #d97706;
+    --amber-soft: #fffbeb;
+    --red: #dc2626;
+    --red-soft: #fef2f2;
+    --gray-soft: #f3f4f6;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 60px; }
+
+  header { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+  header h1 { font-size: 26px; letter-spacing: .5px; }
+  header .sub { color: var(--muted); font-size: 14px; }
+  header .health { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #9ca3af; display: inline-block; }
+  .dot.ok { background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); }
+  .dot.err { background: var(--red); box-shadow: 0 0 0 3px var(--red-soft); }
+
+  nav.tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+  nav.tabs button {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    padding: 9px 18px; border-radius: 999px; cursor: pointer; font-size: 14px;
+    transition: all .15s ease;
+  }
+  nav.tabs button:hover { border-color: var(--accent); color: var(--accent); }
+  nav.tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+  .tab { display: none; }
+  .tab.active { display: block; animation: fade .18s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 16px; margin-bottom: 14px; }
+  .hint { font-size: 12.5px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 14px; font-family: inherit; background: #fbfcfe; outline: none; transition: border-color .15s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--accent); background: #fff; }
+  .field textarea { resize: vertical; min-height: 72px; }
+  .field.full { grid-column: 1 / -1; }
+
+  .btn {
+    border: none; border-radius: 8px; padding: 9px 20px; font-size: 14px; cursor: pointer;
+    background: var(--accent); color: #fff; transition: filter .15s;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:disabled { background: #a5b4fc; cursor: not-allowed; }
+  .btn.ghost { background: var(--gray-soft); color: var(--text); border: 1px solid var(--border); }
+  .btn.danger { background: var(--red); }
+  .btn.sm { padding: 5px 12px; font-size: 12.5px; border-radius: 6px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+  tr:hover td { background: #fafbff; }
+  .empty { text-align: center; color: var(--muted); padding: 28px 0 !important; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.QUEUED, .badge.PENDING { background: var(--gray-soft); color: var(--muted); }
+  .badge.PROCESSING { background: var(--amber-soft); color: var(--amber); animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .badge.SUCCESS, .badge.READY { background: var(--green-soft); color: var(--green); }
+  .badge.FAILED { background: var(--red-soft); color: var(--red); }
+  .badge.INVALID { background: var(--gray-soft); color: var(--muted); text-decoration: line-through; }
+
+  .score { display: flex; align-items: center; gap: 10px; }
+  .score .bar { flex: 1; height: 8px; border-radius: 4px; background: var(--gray-soft); overflow: hidden; }
+  .score .bar i { display: block; height: 100%; border-radius: 4px; background: var(--accent); }
+  .score .val { font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--muted); width: 52px; text-align: right; }
+
+  /* 任务时间线 */
+  .timeline { display: flex; gap: 0; margin: 18px 0 6px; }
+  .timeline .step { flex: 1; text-align: center; position: relative; }
+  .timeline .step::before {
+    content: ""; position: absolute; top: 13px; left: -50%; width: 100%; height: 2px;
+    background: var(--border); z-index: 0;
+  }
+  .timeline .step:first-child::before { display: none; }
+  .timeline .step .circle {
+    width: 28px; height: 28px; margin: 0 auto 8px; border-radius: 50%; background: var(--card);
+    border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; position: relative; z-index: 1; transition: all .25s;
+  }
+  .timeline .step.done .circle { background: var(--green); border-color: var(--green); color: #fff; }
+  .timeline .step.failed .circle { background: var(--red); border-color: var(--red); color: #fff; }
+  .timeline .step.active .circle { border-color: var(--amber); color: var(--amber); }
+  .timeline .step .label { font-size: 12.5px; color: var(--muted); }
+  .timeline .step.done .label { color: var(--green); font-weight: 600; }
+  .timeline .step.failed .label { color: var(--red); font-weight: 600; }
+  .timeline .step.active .label { color: var(--amber); font-weight: 600; }
+
+  .kv { display: grid; grid-template-columns: 110px 1fr; row-gap: 8px; font-size: 13.5px; }
+  .kv dt { color: var(--muted); }
+  .kv dd { word-break: break-all; }
+
+  .pager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-top: 12px; font-size: 13px; color: var(--muted); }
+
+  #toast { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 99; display: flex; flex-direction: column; gap: 8px; }
+  #toast div { padding: 10px 18px; border-radius: 8px; font-size: 13.5px; box-shadow: 0 6px 20px rgba(0,0,0,.12); animation: fade .2s ease; }
+  #toast .err { background: #fff1f0; color: var(--red); border: 1px solid #fecaca; }
+  #toast .ok { background: #f0fdf4; color: var(--green); border: 1px solid #bbf7d0; }
+
+  @media (max-width: 640px) {
+    .kv { grid-template-columns: 84px 1fr; }
+    header .health { margin-left: 0; width: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>⚡ 12Timers</h1>
+    <span class="sub">文本模拟向量化与向量检索微服务</span>
+    <span class="health"><i id="healthDot" class="dot"></i><span id="healthText">检测中…</span></span>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="ingest" class="active">📥 文档入库</button>
+    <button data-tab="search">🔍 向量检索</button>
+    <button data-tab="task">📋 任务查询</button>
+    <button data-tab="docs">🗂 文档库</button>
+  </nav>
+
+  <!-- 入库 -->
+  <section id="tab-ingest" class="tab active">
+    <div class="card">
+      <h2>提交文档（异步向量化）</h2>
+      <div class="grid">
+        <div class="field">
+          <label>文档 ID *</label>
+          <input id="in-docId" placeholder="如 doc-001" maxlength="64">
+        </div>
+        <div class="field">
+          <label>渠道（可选，默认 default）</label>
+          <input id="in-channel" placeholder="如 news / blog" maxlength="32">
+        </div>
+        <div class="field full">
+          <label>原始文本 *</label>
+          <textarea id="in-text" placeholder="输入要向量化的文本内容"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn" id="btn-submit">提交入库</button>
+      </div>
+      <p class="hint">提交后立即返回任务 ID，向量化在后台队列异步执行（模拟 CPU 耗时）。任务完成前文档不可检索。</p>
+    </div>
+    <div class="card" id="ingest-result" style="display:none">
+      <h2>任务进度 <span class="hint" id="ingest-taskId" style="margin:0"></span></h2>
+      <div class="timeline" id="timeline">
+        <div class="step" data-status="QUEUED"><div class="circle">1</div><div class="label">排队中</div></div>
+        <div class="step" data-status="PROCESSING"><div class="circle">2</div><div class="label">处理中</div></div>
+        <div class="step" data-status="SUCCESS"><div class="circle">3</div><div class="label">完成</div></div>
+      </div>
+      <div id="ingest-err" style="display:none; color:var(--red); font-size:13px"></div>
+    </div>
+  </section>
+
+  <!-- 检索 -->
+  <section id="tab-search" class="tab">
+    <div class="card">
+      <h2>向量检索（同步，相似度 Top-K）</h2>
+      <div class="grid">
+        <div class="field full">
+          <label>查询文本 *</label>
+          <textarea id="s-text" placeholder="输入查询文本"></textarea>
+        </div>
+        <div class="field">
+          <label>topK（1 ~ 100）</label>
+          <input id="s-topK" type="number" value="10" min="1" max="100">
+        </div>
+        <div class="field">
+          <label>渠道过滤（可选）</label>
+          <input id="s-channel" placeholder="留空 = 全部渠道" maxlength="32">
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn" id="btn-search">开始检索</button>
+      </div>
+      <p class="hint">查询文本执行与入库一致的向量化逻辑，在已完成向量化的有效文档中计算余弦相似度，按相似度降序返回；失效文档自动过滤。</p>
+    </div>
+    <div class="card" id="search-result" style="display:none">
+      <h2>检索结果 <span class="hint" id="search-count" style="margin:0"></span></h2>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th style="width:56px">#</th><th>文档 ID</th><th>渠道</th><th style="width:42%">相似度</th></tr></thead>
+          <tbody id="search-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 任务 -->
+  <section id="tab-task" class="tab">
+    <div class="card">
+      <h2>任务状态查询</h2>
+      <div class="grid">
+        <div class="field">
+          <label>任务 ID</label>
+          <input id="t-taskId" placeholder="提交入库时返回的任务 ID">
+        </div>
+      </div>
+      <div style="margin-top:14px">
+        <button class="btn" id="btn-task">查询</button>
+      </div>
+    </div>
+    <div class="card" id="task-result" style="display:none">
+      <h2>任务详情</h2>
+      <dl class="kv" id="task-kv"></dl>
+    </div>
+  </section>
+
+  <!-- 文档库 -->
+  <section id="tab-docs" class="tab">
+    <div class="card">
+      <h2>文档列表（分页 + 过滤）</h2>
+      <div class="grid">
+        <div class="field">
+          <label>渠道</label>
+          <input id="d-channel" placeholder="全部渠道">
+        </div>
+        <div class="field">
+          <label>状态</label>
+          <select id="d-status">
+            <option value="">全部状态</option>
+            <option value="PENDING">PENDING 向量化中</option>
+            <option value="READY">READY 已就绪</option>
+            <option value="INVALID">INVALID 已失效</option>
+            <option value="FAILED">FAILED 失败</option>
+          </select>
+        </div>
+        <div class="field" style="display:flex; align-items:flex-end">
+          <button class="btn" id="btn-docs">查询</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>文档 ID</th><th>渠道</th><th>状态</th><th>向量</th><th>命中次数</th><th>入库时间</th><th style="width:150px">操作</th></tr></thead>
+          <tbody id="docs-tbody"><tr><td colspan="7" class="empty">点击「查询」加载文档列表</td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <button class="btn ghost sm" id="pg-prev">上一页</button>
+        <span id="pg-info">-</span>
+        <button class="btn ghost sm" id="pg-next">下一页</button>
+      </div>
+    </div>
+    <div class="card" id="doc-detail" style="display:none">
+      <h2>文档详情 <span class="hint" id="detail-docId" style="margin:0"></span></h2>
+      <dl class="kv" id="detail-kv"></dl>
+    </div>
+  </section>
+</div>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+
+/* ---------- 基础工具 ---------- */
+const $ = (id) => document.getElementById(id);
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const resp = await fetch(path, opts);
+  if (!resp.ok) {
+    let msg = "HTTP " + resp.status;
+    try {
+      const data = await resp.json();
+      msg = (data.code ? data.code + ": " : "") + (data.message || msg);
+    } catch (e) { /* 非 JSON 响应 */ }
+    throw new Error(msg);
+  }
+  if (resp.status === 204) return null;
+  return resp.json();
+}
+
+function toast(message, type) {
+  const div = document.createElement("div");
+  div.className = type || "ok";
+  div.textContent = message;
+  $("toast").appendChild(div);
+  setTimeout(() => div.remove(), 3500);
+}
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g,
+      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function badge(status, isDocStatus) {
+  const map = isDocStatus
+      ? { PENDING: "PENDING", READY: "READY", INVALID: "INVALID", FAILED: "FAILED" }
+      : { QUEUED: "QUEUED", PROCESSING: "PROCESSING", SUCCESS: "SUCCESS", FAILED: "FAILED" };
+  const cls = map[status] || status;
+  return `<span class="badge ${cls}">${esc(status)}</span>`;
+}
+
+function fmtTime(t) { return t ? String(t).replace("T", " ").slice(0, 19) : "—"; }
+
+/* ---------- 标签页 ---------- */
+$("tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-tab]");
+  if (!btn) return;
+  document.querySelectorAll("nav.tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.id === "tab-" + btn.dataset.tab));
+});
+
+/* ---------- 健康检查 ---------- */
+(async function healthCheck() {
+  try {
+    const info = await api("GET", "/api");
+    $("healthDot").className = "dot ok";
+    $("healthText").textContent = "服务运行中";
+  } catch (e) {
+    $("healthDot").className = "dot err";
+    $("healthText").textContent = "服务不可用: " + e.message;
+  }
+})();
+
+/* ---------- 文档入库 + 任务轮询 ---------- */
+async function submitDocument() {
+  const docId = $("in-docId").value.trim();
+  const text = $("in-text").value.trim();
+  const channel = $("in-channel").value.trim() || undefined;
+  if (!docId || !text) { toast("请填写文档 ID 和文本", "err"); return; }
+  const btn = $("btn-submit");
+  btn.disabled = true;
+  try {
+    const resp = await api("POST", "/api/v1/documents", { docId, text, channel });
+    $("ingest-result").style.display = "";
+    $("ingest-taskId").textContent = "taskId: " + resp.taskId;
+    $("ingest-err").style.display = "none";
+    renderTimeline("QUEUED");
+    pollTask(resp.taskId);
+    toast("已提交，任务 " + resp.taskId + " 进入异步队列");
+  } catch (e) {
+    toast(e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("btn-submit").addEventListener("click", submitDocument);
+
+const ORDER = ["QUEUED", "PROCESSING", "SUCCESS"];
+function renderTimeline(status) {
+  const failed = status === "FAILED";
+  const idx = failed ? -1 : ORDER.indexOf(status);
+  document.querySelectorAll("#timeline .step").forEach((step) => {
+    const s = step.dataset.status;
+    const si = ORDER.indexOf(s);
+    step.classList.remove("done", "active", "failed");
+    if (failed && si <= 1) { step.classList.add("failed"); step.querySelector(".circle").textContent = "✕"; }
+    else if (si < idx || (si === idx && s === "SUCCESS")) {
+      step.classList.add("done");
+      step.querySelector(".circle").textContent = "✓";
+    } else if (si === idx) step.classList.add("active");
+  });
+}
+
+let pollTimer = null;
+async function pollTask(taskId) {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    try {
+      const task = await api("GET", "/api/v1/tasks/" + taskId);
+      renderTimeline(task.status);
+      if (task.status === "SUCCESS") {
+        clearInterval(pollTimer);
+        toast("任务完成，文档已就绪可检索 ✨");
+        $("ingest-err").textContent = "向量化完成时间: " + fmtTime(task.finishTime);
+        $("ingest-err").style.display = "";
+        $("ingest-err").style.color = "var(--green)";
+      } else if (task.status === "FAILED") {
+        clearInterval(pollTimer);
+        $("ingest-err").textContent = "任务失败: " + (task.errorMsg || "未知原因");
+        $("ingest-err").style.display = "";
+        $("ingest-err").style.color = "var(--red)";
+        toast("任务失败: " + task.errorMsg, "err");
+      }
+    } catch (e) {
+      clearInterval(pollTimer);
+      toast(e.message, "err");
+    }
+  }, 500);
+}
+
+/* ---------- 向量检索 ---------- */
+async function doSearch() {
+  const text = $("s-text").value.trim();
+  if (!text) { toast("请输入查询文本", "err"); return; }
+  const topK = parseInt($("s-topK").value, 10) || 10;
+  const channel = $("s-channel").value.trim() || undefined;
+  const btn = $("btn-search");
+  btn.disabled = true;
+  try {
+    const resp = await api("POST", "/api/v1/search", { text, topK, channel });
+    $("search-result").style.display = "";
+    $("search-count").textContent = "共 " + resp.items.length + " 条命中" + (channel ? "（渠道 " + channel + "）" : "");
+    const tbody = $("search-tbody");
+    if (!resp.items.length) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty">暂无结果：文档库中没有已就绪的有效文档，或渠道过滤后为空</td></tr>';
+      return;
+    }
+    tbody.innerHTML = resp.items.map((item, i) => {
+      const pct = ((item.score + 1) / 2 * 100).toFixed(1);
+      return `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(item.docId)}</td>
+        <td>${esc(item.channel)}</td>
+        <td><div class="score"><div class="bar"><i style="width:${pct}%"></i></div><span class="val">${item.score.toFixed(4)}</span></div></td>
+      </tr>`;
+    }).join("");
+  } catch (e) {
+    toast(e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+$("btn-search").addEventListener("click", doSearch);
+
+/* ---------- 任务查询 ---------- */
+async function queryTask() {
+  const taskId = $("t-taskId").value.trim();
+  if (!taskId) { toast("请输入任务 ID", "err"); return; }
+  try {
+    const task = await api("GET", "/api/v1/tasks/" + taskId);
+    $("task-result").style.display = "";
+    const d = task.document;
+    $("task-kv").innerHTML = `
+      <dt>任务 ID</dt><dd>${esc(task.taskId)}</dd>
+      <dt>文档 ID</dt><dd>${esc(task.docId)}</dd>
+      <dt>状态</dt><dd>${badge(task.status, false)}</dd>
+      <dt>失败原因</dt><dd>${esc(task.errorMsg || "—")}</dd>
+      <dt>创建时间</dt><dd>${fmtTime(task.createTime)}</dd>
+      <dt>开始时间</dt><dd>${fmtTime(task.startTime)}</dd>
+      <dt>完成时间</dt><dd>${fmtTime(task.finishTime)}</dd>
+      ${d ? `<dt>文档信息</dt><dd>状态 ${badge(d.status, true)}，渠道 ${esc(d.channel)}，向量就绪 ${d.vectorReady ? "✔" : "✘"}，命中 ${d.hitCount} 次</dd>` : ""}`;
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+$("btn-task").addEventListener("click", queryTask);
+
+/* ---------- 文档库 ---------- */
+let docsPage = 1, docsTotal = 0, docsSize = 10;
+
+async function loadDocs(page) {
+  docsPage = page;
+  const channel = $("d-channel").value.trim() || undefined;
+  const status = $("d-status").value || undefined;
+  const query = new URLSearchParams({ page: String(page), size: String(docsSize) });
+  if (channel) query.set("channel", channel);
+  if (status) query.set("status", status);
+  try {
+    const resp = await api("GET", "/api/v1/documents?" + query.toString());
+    docsTotal = resp.total;
+    $("pg-info").textContent = `第 ${resp.page} 页 / 共 ${Math.max(1, Math.ceil(resp.total / resp.size))} 页，共 ${resp.total} 篇`;
+    $("pg-prev").disabled = resp.page <= 1;
+    $("pg-next").disabled = resp.page * resp.size >= resp.total;
+    const tbody = $("docs-tbody");
+    if (!resp.items.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无文档</td></tr>';
+      return;
+    }
+    tbody.innerHTML = resp.items.map((d) => `
+      <tr>
+        <td>${esc(d.docId)}</td>
+        <td>${esc(d.channel)}</td>
+        <td>${badge(d.status, true)}</td>
+        <td>${d.vectorReady ? "✔ 就绪" : "—"}</td>
+        <td>${d.hitCount}</td>
+        <td>${fmtTime(d.submitTime)}</td>
+        <td>
+          <button class="btn ghost sm" onclick="showDetail('${esc(d.docId)}')">详情</button>
+          <button class="btn danger sm" onclick="invalidateDoc('${esc(d.docId)}')">失效</button>
+        </td>
+      </tr>`).join("");
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+$("btn-docs").addEventListener("click", () => loadDocs(1));
+$("pg-prev").addEventListener("click", () => loadDocs(docsPage - 1));
+$("pg-next").addEventListener("click", () => loadDocs(docsPage + 1));
+
+async function showDetail(docId) {
+  try {
+    const resp = await api("GET", "/api/v1/documents/" + docId);
+    const d = resp.document, t = resp.task;
+    $("doc-detail").style.display = "";
+    $("detail-docId").textContent = "docId: " + d.docId;
+    $("detail-kv").innerHTML = `
+      <dt>渠道</dt><dd>${esc(d.channel)}</dd>
+      <dt>状态</dt><dd>${badge(d.status, true)}</dd>
+      <dt>向量就绪</dt><dd>${d.vectorReady ? "✔ 是" : "✘ 否"}</dd>
+      <dt>命中次数</dt><dd>${d.hitCount}</dd>
+      <dt>入库时间</dt><dd>${fmtTime(d.submitTime)}</dd>
+      <dt>向量化完成</dt><dd>${fmtTime(d.completeTime)}</dd>
+      <dt>失效时间</dt><dd>${fmtTime(d.invalidTime)}</dd>
+      ${t ? `<dt>关联任务</dt><dd>${esc(t.taskId)}（${badge(t.status, false)}）</dd>` : ""}`;
+    $("doc-detail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+
+async function invalidateDoc(docId) {
+  if (!confirm("确认将文档 " + docId + " 标记为失效？失效后不再参与检索。")) return;
+  try {
+    await api("POST", "/api/v1/documents/" + docId + "/invalidate");
+    toast("文档 " + docId + " 已失效");
+    loadDocs(docsPage);
+  } catch (e) {
+    toast(e.message, "err");
+  }
+}
+</script>
+</body>
+</html>

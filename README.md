@@ -30,7 +30,10 @@ java -jar target/12timers-0.0.1-SNAPSHOT.jar
 ```
 
 启动后：
-- 服务地址：`http://localhost:8080`
+- **前端操作界面**：浏览器访问 `http://localhost:8080` —— 自包含单页（无外部依赖），
+  支持文档入库（任务时间线实时轮询）、向量检索（相似度可视化）、任务状态查询、
+  文档库（分页/过滤/详情/失效标记），覆盖全部接口功能
+- 服务信息 JSON：`http://localhost:8080/api`
 - H2 控制台：`http://localhost:8080/h2-console`（JDBC URL: `jdbc:h2:file:./data/vectordb`，用户 `sa`，密码空）
 - 数据文件：`./data/vectordb.mv.db`（**文件持久化模式，重启保留数据**）
 - 建表 DDL：`src/main/resources/schema.sql`（启动自动执行，`IF NOT EXISTS` 幂等）

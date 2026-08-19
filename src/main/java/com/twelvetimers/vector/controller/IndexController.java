@@ -7,12 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 根路径欢迎页：浏览器直接访问服务地址时返回服务信息与接口清单。
+ * 服务信息接口（根路径 / 由静态首页 index.html 提供操作界面）。
  */
 @RestController
 public class IndexController {
 
-    @GetMapping("/")
+    @GetMapping("/api")
     public Map<String, Object> index() {
         return Map.of(
                 "service", "12timers 文本模拟向量化与向量检索微服务",
