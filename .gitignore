@@ -1,0 +1,22 @@
+# 编译产物
+target/
+
+# H2 数据文件与日志（本地数据不提交）
+data/
+logs/
+*.log
+*.mv.db
+*.trace.db
+*.lock.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# 系统
+.DS_Store
+Thumbs.db
