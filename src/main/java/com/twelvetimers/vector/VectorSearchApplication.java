@@ -2,6 +2,7 @@ package com.twelvetimers.vector;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * 12Timers —— 文本模拟向量化与向量检索微服务。
@@ -10,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * 不依赖任何队列中间件。
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class VectorSearchApplication {
 
     public static void main(String[] args) {

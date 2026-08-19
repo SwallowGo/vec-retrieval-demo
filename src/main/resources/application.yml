@@ -25,6 +25,14 @@ spring:
 server:
   port: 8080
 
+# 向量化异步引擎配置
+vector:
+  embedding:
+    workers: 4                # 工作线程数（CPU 密集）
+    queue-capacity: 1024      # 有界队列容量（队满即拒绝，背压保护）
+    busy-rounds: 20000        # 模拟 CPU 耗时的哈希迭代轮数
+    simulated-delay-ms: 100   # 模拟外部 Embedding API 延迟（毫秒）
+
 logging:
   level:
     com.twelvetimers.vector: info
