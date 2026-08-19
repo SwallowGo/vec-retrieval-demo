@@ -1,7 +1,6 @@
-# 12Timers — 文本模拟向量化与向量检索微服务
+# 文本模拟向量化与向量检索微服务
 
-中高级 Java 后端笔试题实现（AI 应用方向）：模拟 Embedding 向量化（不调用任何 LLM / Embedding API），
-覆盖 **并发编程、队列、数据结构与算法、参数校验、业务异常、内存与线程安全存储** 六大考察点。
+模拟 Embedding 向量化（不调用任何 LLM / Embedding API）
 
 详细设计见 [ARCHITECTURE.md](ARCHITECTURE.md)，与 AI 的关键对话见 [docs/AI_CONVERSATION.md](docs/AI_CONVERSATION.md)。
 
